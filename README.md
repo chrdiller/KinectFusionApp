@@ -8,7 +8,7 @@ can then be exported into a pointcloud or a dense surface mesh.
 Dependencies
 ------------
 * **GCC 5** as higher versions don't work with current nvcc (as of 2017).
-* **CUDA 8.0**. In order to provide real-time reconstruction, this library relies on graphics hardware.
+* **CUDA 8.0** or higher. In order to provide real-time reconstruction, this library relies on graphics hardware.
 Running it exclusively on CPU is not possible.
 * **OpenCV 3.0** or higher. This library heavily depends on the GPU features of OpenCV that have been refactored in the 3.0 release.
 Therefore, OpenCV 2 is not supported.
@@ -18,10 +18,14 @@ Therefore, OpenCV 2 is not supported.
 Prerequisites
 -------------
 * Adjust CUDA architecture: Set the CUDA architecture version to that of your graphics hardware
+```cmake
 SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3 -gencode arch=compute_52,code=sm_52)
+```
 Tested with a nVidia GeForce 970, compute capability 5.2, maxwell architecture
 * Set custom opencv path (if built from source):
+```cmake
 SET("OpenCV_DIR" "/opt/opencv/usr/local/share/OpenCV")
+```
 
 Usage
 -----

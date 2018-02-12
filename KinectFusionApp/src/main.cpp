@@ -14,36 +14,68 @@
 #include <opencv2/highgui.hpp>
 #pragma GCC diagnostic pop
 
-int main()
+#include <cxxopts.hpp>
+#include <cpptoml.h>
+
+std::string data_path {};
+std::string recording_name {};
+
+auto make_configuration(const std::shared_ptr<cpptoml::table>& toml_config)
 {
-    const std::string data_path = "/media/christian/Barracuda/IDP/dataset_new/";
-    const std::string recording_name = "yunus2";
+    kinectfusion::GlobalConfiguration configuration;
 
-    std::stringstream source_path {};
-    source_path << data_path << "source/" << recording_name << "/";
+    // cpptoml only supports int64_t, so we need to explicitly cast to int to suppress the warning
+    auto volume_size_values = *toml_config->get_qualified_array_of<int64_t>("kinectfusion.volume_size");
+    configuration.volume_size = make_int3(static_cast<int>(volume_size_values[0]),
+                                          static_cast<int>(volume_size_values[1]),
+                                          static_cast<int>(volume_size_values[2]));
+    configuration.voxel_scale = static_cast<float>(*toml_config->get_qualified_as<double>("kinectfusion.voxel_scale"));
+    configuration.bfilter_kernel_size = *toml_config->get_qualified_as<int>("kinectfusion.bfilter_kernel_size");
+    configuration.bfilter_color_sigma  = static_cast<float>(*toml_config->get_qualified_as<double>("kinectfusion.bfilter_color_sigma"));
+    configuration.bfilter_spatial_sigma  = static_cast<float>(*toml_config->get_qualified_as<double>("kinectfusion.bfilter_spatial_sigma"));
+    configuration.init_depth  = static_cast<float>(*toml_config->get_qualified_as<double>("kinectfusion.init_depth"));
+    configuration.use_output_frame = *toml_config->get_qualified_as<bool>("kinectfusion.use_output_frame");
+    configuration.truncation_distance  = static_cast<float>(*toml_config->get_qualified_as<double>("kinectfusion.truncation_distance"));
+    configuration.depth_cutoff_distance  = static_cast<float>(*toml_config->get_qualified_as<double>("kinectfusion.depth_cutoff_distance"));
+    configuration.num_levels  = *toml_config->get_qualified_as<int>("kinectfusion.num_levels");
+    configuration.triangles_buffer_size  = *toml_config->get_qualified_as<int>("kinectfusion.triangles_buffer_size");
+    configuration.pointcloud_buffer_size  = *toml_config->get_qualified_as<int>("kinectfusion.pointcloud_buffer_size");
+    configuration.distance_threshold  = static_cast<float>(*toml_config->get_qualified_as<double>("kinectfusion.distance_threshold"));
+    configuration.angle_threshold  = static_cast<float>(*toml_config->get_qualified_as<double>("kinectfusion.angle_threshold"));
+    auto icp_iterations_values = *toml_config->get_qualified_array_of<int64_t>("kinectfusion.icp_iterations");
+    configuration.icp_iterations = {icp_iterations_values.begin(), icp_iterations_values.end()};
 
-    PseudoCamera camera = PseudoCamera { source_path.str() };
-    //XtionCamera camera = XtionCamera {};
+    return configuration;
+}
+
+auto make_camera(const std::shared_ptr<cpptoml::table>& toml_config)
+{
+    std::unique_ptr<DepthCamera> camera;
+
+    const auto camera_type = *toml_config->get_qualified_as<std::string>("camera.type");
+    if (camera_type == "Pseudo") {
+        std::stringstream source_path {};
+        source_path << data_path << "source/" << recording_name << "/";
+        camera = std::make_unique<PseudoCamera>(source_path.str());
+    } else if (camera_type == "Xtion") {
+        camera = std::make_unique<XtionCamera>();
+    } else if (camera_type == "RealSense") {
+        // TODO implement realsense camera
+    } else {
+        throw std::logic_error("There is no implementation for the camera type you specified.");
+    }
+
+    return camera;
+}
+
+void main_loop(const std::unique_ptr<DepthCamera> camera, const kinectfusion::GlobalConfiguration configuration)
+{
+    kinectfusion::Pipeline pipeline { camera->get_parameters(), configuration };
 
     cv::namedWindow("Pipeline Output");
-
-    kinectfusion::GlobalConfiguration configuration;
-    configuration.voxel_scale = 2.f;
-    configuration.triangles_buffer_size *= 25;
-    configuration.init_depth = 1000.f;
-    configuration.distance_threshold = 5.f;
-    configuration.angle_threshold = 20.f;
-    configuration.icp_iterations = std::vector<int>{4, 5, 10};
-    configuration.volume_size.x = 512;
-    configuration.volume_size.y = 512;
-    configuration.volume_size.z = 512;
-    configuration.depth_cutoff_distance = 1500.f;
-    configuration.truncation_distance = 25.f;
-    kinectfusion::Pipeline pipeline { camera.get_parameters(), configuration };
-
     for (bool end = false; !end;) {
         //1 Get frame
-        InputFrame frame = camera.grab_frame();
+        InputFrame frame = camera->grab_frame();
 
         //2 Process frame
         bool success = pipeline.process_frame(frame.depth_map, frame.color_map);
@@ -105,6 +137,29 @@ int main()
                 break;
         }
     }
+}
+
+
+int main(int argc, char* argv[])
+{
+    // Parse command line options
+    cxxopts::Options options { "KinectFusionApp",
+                               "Sample application for KinectFusionLib, a modern implementation of the KinectFusion approach"};
+    options.add_options()("c,config", "Configuration filename", cxxopts::value<std::string>());
+    auto program_arguments = options.parse(argc, argv);
+    if (program_arguments.count("config") == 0)
+        throw std::invalid_argument("You have to specify a path to the configuration file");
+
+    // Parse TOML configuration file
+    auto toml_config = cpptoml::parse_file(program_arguments["config"].as<std::string>());
+    data_path = *toml_config->get_qualified_as<std::string>("camera.pseudo.data_path");
+    recording_name = *toml_config->get_qualified_as<std::string>("camera.pseudo.recording_name");
+
+    // Start the program's main loop
+    main_loop(
+            make_camera(toml_config),
+            make_configuration(toml_config)
+    );
 
     return EXIT_SUCCESS;
 }

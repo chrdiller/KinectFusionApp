@@ -16,7 +16,7 @@ find_package(CUDA 8.0 REQUIRED)
 IF (CUDA_FOUND)
     include_directories("${CUDA_INCLUDE_DIRS}")
     # Optional: Specify the arch of your CUDA hardware here
-    SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3;-std=c++11 -gencode arch=compute_52,code=sm_52)
+    SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3;-std=c++11 -gencode arch=compute_20,code=sm_21)
 ENDIF ()
 
 ## OpenCV

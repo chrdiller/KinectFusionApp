@@ -1,3 +1,3 @@
 [submodule "KinectFusionLib"]
 	path = KinectFusionLib
-	url = git@github.com:chrdiller/KinectFusionLib
+	url = https://github.com/chrdiller/KinectFusionLib
