@@ -16,6 +16,8 @@
 #include <OpenNI.h>
 #pragma GCC diagnostic pop
 
+#include <librealsense2/rs.hpp>
+
 using kinectfusion::CameraParameters;
 
 /**
@@ -77,6 +79,27 @@ private:
 
     CameraParameters cam_params;
 };
+
+/*
+ * Provides depth frames acquired by an Intel Realsense camera.
+ */
+class RealSenseCamera : public DepthCamera {
+public:
+    RealSenseCamera();
+    RealSenseCamera(const std::string& filename);
+
+    ~RealSenseCamera() override = default;
+
+    InputFrame grab_frame() const override;
+
+    CameraParameters get_parameters() const override;
+
+private:
+    rs2::config configuration;
+    rs2::pipeline pipeline;
+    CameraParameters cam_params;
+};
+
 
 /*
  * Provides depth frames acquired by a Microsoft Kinect camera.

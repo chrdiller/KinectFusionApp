@@ -180,6 +180,60 @@ CameraParameters XtionCamera::get_parameters() const
     return cam_params;
 }
 
+// ### Intel RealSense
+RealSenseCamera::RealSenseCamera()
+{
+    throw std::logic_error("Live camera access has not yet been implemented");
+}
+
+RealSenseCamera::RealSenseCamera(const std::string& filename)
+{
+    configuration.enable_device_from_file(filename);
+    pipeline.start(configuration);
+
+    auto streams = pipeline.get_active_profile().get_streams();
+    for(const auto& stream : streams) {
+        if(stream.stream_type() == RS2_STREAM_DEPTH) {
+            auto intrinsics = stream.as<rs2::video_stream_profile>().get_intrinsics();
+            cam_params.focal_x = intrinsics.fx;
+            cam_params.focal_y = intrinsics.fy;
+            cam_params.image_height = intrinsics.height;
+            cam_params.image_width = intrinsics.width;
+            cam_params.principal_x = intrinsics.ppx;
+            cam_params.principal_y = intrinsics.ppy;
+        }
+    }
+}
+
+InputFrame RealSenseCamera::grab_frame() const
+{
+    auto data = pipeline.wait_for_frames();
+    auto depth = data.get_depth_frame();
+    auto color = data.get_color_frame();
+
+    cv::Mat depth_frame { depth.as<rs2::video_frame>().get_width(),
+                          depth.as<rs2::video_frame>().get_height(),
+                          CV_16U,
+                          static_cast<char*>(const_cast<void*>(depth.get_data())) };
+    depth_frame.convertTo(depth_frame, CV_32FC1);
+
+    cv::Mat color_image { color.as<rs2::video_frame>().get_width(),
+                          color.as<rs2::video_frame>().get_height(),
+                          CV_8UC3,
+                          static_cast<char*>(const_cast<void*>(color.get_data())) };
+
+    return InputFrame{
+            depth_frame,
+            color_image
+    };
+}
+
+CameraParameters RealSenseCamera::get_parameters() const
+{
+    return cam_params;
+}
+
+
 
 // ### Kinect ###
 /*

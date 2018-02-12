@@ -1,15 +1,16 @@
 # Configuration file for KinectFusionApp
 
+data_path = "/home/christian/share/dataset/"
+recording_name = "stairs"
+
 # Input camera settings
 [camera]
-type = "Pseudo"
+#type = "Pseudo"
 #type = "Xtion"
-#type = "RealSense"
+type = "RealSense"
 
-[camera.pseudo]
-data_path = "/home/christian/share/dataset/"
-recording_name = "yunus2"
-
+[camera.realsense]
+live = false
 
 # KinectFusion pipeline settings
 [kinectfusion]
