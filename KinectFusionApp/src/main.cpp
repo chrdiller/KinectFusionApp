@@ -74,7 +74,7 @@ auto make_camera(const std::shared_ptr<cpptoml::table>& toml_config)
     return camera;
 }
 
-void main_loop(const std::unique_ptr<DepthCamera> camera, const kinectfusion::GlobalConfiguration configuration)
+void main_loop(const std::unique_ptr<DepthCamera> camera, const kinectfusion::GlobalConfiguration& configuration)
 {
     kinectfusion::Pipeline pipeline { camera->get_parameters(), configuration };
 
@@ -145,6 +145,20 @@ void main_loop(const std::unique_ptr<DepthCamera> camera, const kinectfusion::Gl
     }
 }
 
+void setup_cuda_device()
+{
+    auto n_devices = cv::cuda::getCudaEnabledDeviceCount();
+    std::cout << "Found " << n_devices << " CUDA devices" << std::endl;
+    for (int device_idx = 0; device_idx < n_devices; ++device_idx) {
+        cv::cuda::DeviceInfo info { device_idx };
+        std::cout << "Device #" << device_idx << ": " << info.name()
+                  << " with " << info.totalMemory() / 1048576 << "MB total memory" << std::endl;
+    }
+
+    // Hardcoded to first device; change if necessary
+    std::cout << "Using device #0" << std::endl;
+    cv::cuda::setDevice(0);
+}
 
 int main(int argc, char* argv[])
 {
@@ -160,6 +174,9 @@ int main(int argc, char* argv[])
     auto toml_config = cpptoml::parse_file(program_arguments["config"].as<std::string>());
     data_path = *toml_config->get_as<std::string>("data_path");
     recording_name = *toml_config->get_as<std::string>("recording_name");
+
+    // Print info about available CUDA devices and specify device to use
+    setup_cuda_device();
 
     // Start the program's main loop
     main_loop(

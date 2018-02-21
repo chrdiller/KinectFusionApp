@@ -119,6 +119,6 @@ $RECYCLE.BIN/
 ####################
 build/
 cmake-build-debug/
+cmake-build-release/
 data/
 .idea/
-

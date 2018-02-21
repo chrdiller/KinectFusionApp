@@ -95,9 +95,10 @@ public:
     CameraParameters get_parameters() const override;
 
 private:
-    rs2::config configuration;
     rs2::pipeline pipeline;
     CameraParameters cam_params;
+
+    float depth_scale;
 };
 
 
